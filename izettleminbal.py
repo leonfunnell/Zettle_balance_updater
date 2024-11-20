@@ -162,3 +162,20 @@ def lambda_handler(event, context):
                 'screenshot_url': e.args[1].get('screenshot_url')
             })
         }
+
+# main
+if __name__ == "__main__":
+    email = os.getenv("IZETTLE_EMAIL")
+    password = os.getenv("IZETTLE_PASSWORD")
+    min_balance = os.getenv("MIN_BALANCE")
+    # Create JSON and call lambda_handler so we can test the function locally
+    event = {
+        "body": json.dumps({
+            "email": email,
+            "password": password,
+            "min_balance": min_balance
+        })
+    }
+    lambda_handler(event, None)
+
+# End of izettleminbal.py
