@@ -11,6 +11,36 @@ resource "aws_s3_bucket" "lambda_bucket" {
   bucket = "izettleminbal-${random_string.suffix.result}"
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "lambda_bucket_lifecycle" {
+  bucket = aws_s3_bucket.lambda_bucket.id
+
+  rule {
+    id     = "log-expiration"
+    status = "Enabled"
+
+    filter {
+      prefix = "logs/"
+    }
+
+    expiration {
+      days = var.log_expiration_days
+    }
+  }
+
+  rule {
+    id     = "screenshot-expiration"
+    status = "Enabled"
+
+    filter {
+      prefix = "errors/"
+    }
+
+    expiration {
+      days = var.screenshot_expiration_days
+    }
+  }
+}
+
 resource "aws_iam_role" "lambda_role" {
   name = "lambda_role"
   assume_role_policy = jsonencode({
