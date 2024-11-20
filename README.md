@@ -43,6 +43,7 @@ Setup
         # Install Docker Engine
         sudo apt-get update
         sudo apt-get install docker-ce docker-ce-cli containerd.io
+        sudo systemctl start docker
         
         # Verify installation
         docker --version
@@ -54,7 +55,7 @@ Setup
     
 4.  Build the Docker image and create the deployment package:
     
-        ./zip_lambda.sh
+        sudo ./zip_lambda.sh
     
 5.  Deploy the infrastructure using Terraform:
     
