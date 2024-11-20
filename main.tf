@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "eu-west-2"  # Set to UK region
+  region = var.region  # Use the declared region variable
 }
 
 resource "random_string" "suffix" {
@@ -86,6 +86,45 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
+#resource "aws_iam_role" "api_gateway_cloudwatch_role" {
+#  name = "api_gateway_cloudwatch_role"
+#  assume_role_policy = jsonencode({
+#    Version = "2012-10-17"
+#    Statement = [
+#      {
+#        Effect = "Allow"
+#        Principal = {
+#          Service = "apigateway.amazonaws.com"
+#        }
+#        Action = "sts:AssumeRole"
+#      },
+#    ]
+#  })
+#}
+
+#resource "aws_iam_role_policy" "api_gateway_cloudwatch_policy" {
+#  name   = "api_gateway_cloudwatch_policy"
+#  role   = aws_iam_role.api_gateway_cloudwatch_role.id
+#  policy = jsonencode({
+#    Version = "2012-10-17"
+#    Statement = [
+#      {
+#        Effect = "Allow"
+#        Action = [
+#          "logs:CreateLogGroup",
+#          "logs:CreateLogStream",
+#          "logs:PutLogEvents"
+#        ]
+#        Resource = "arn:aws:logs:*:*:*"
+#      }
+#    ]
+#  })
+#}
+
+#resource "aws_api_gateway_account" "api_gateway_account" {
+#  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_role.arn
+#}
+
 resource "aws_lambda_function" "izettleminbal" {
   filename         = "izettleminbal.zip"
   function_name    = "izettleminbal"
@@ -127,6 +166,45 @@ resource "aws_api_gateway_integration" "izettleminbal_integration" {
   uri         = aws_lambda_function.izettleminbal.invoke_arn
 }
 
+resource "aws_api_gateway_deployment" "izettleminbal_deployment" {
+  rest_api_id = aws_api_gateway_rest_api.izettleminbal_api.id
+  depends_on = [
+    aws_api_gateway_integration.izettleminbal_integration
+  ]
+}
+
+resource "aws_api_gateway_stage" "prod" {
+  deployment_id = aws_api_gateway_deployment.izettleminbal_deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.izettleminbal_api.id
+  stage_name    = "prod"
+
+#  access_log_settings {
+#    destination_arn = aws_cloudwatch_log_group.api_gateway_access_log.arn
+#    format          = jsonencode({
+#      requestId       = "$context.requestId"
+#      ip              = "$context.identity.sourceIp"
+#      caller          = "$context.identity.caller"
+#      user            = "$context.identity.user"
+#      requestTime     = "$context.requestTime"
+#      httpMethod      = "$context.httpMethod"
+#      resourcePath    = "$context.resourcePath"
+#      status          = "$context.status"
+#      protocol        = "$context.protocol"
+#      responseLength  = "$context.responseLength"
+#    })
+#  }
+
+#  variables = {
+#    tracingEnabled = "true"
+#    metricsEnabled = "true"
+#  }
+}
+
+resource "aws_cloudwatch_log_group" "api_gateway_access_log" {
+  name              = "/aws/apigateway/izettleminbal"
+  retention_in_days = 7
+}
+
 resource "aws_lambda_permission" "api_gateway" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
@@ -136,5 +214,5 @@ resource "aws_lambda_permission" "api_gateway" {
 }
 
 output "api_url" {
-  value = "${aws_api_gateway_rest_api.izettleminbal_api.execution_arn}/update_balance"
+  value = "https://${aws_api_gateway_rest_api.izettleminbal_api.id}.execute-api.${var.region}.amazonaws.com/prod/update_balance"
 }

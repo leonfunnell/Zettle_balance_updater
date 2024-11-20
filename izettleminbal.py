@@ -37,7 +37,7 @@ def update_min_balance(email, password, min_balance):
     chrome_options.add_argument("--disable-dev-shm-usage")
     
     # Set up the Chrome driver
-    service = Service("/usr/bin/chromedriver")  # Replace with the correct path to chromedriver
+    service = Service("/usr/bin/chromedriver")  # Ensure the correct path to chromedriver
     driver = webdriver.Chrome(service=service, options=chrome_options)
     
     try:
@@ -137,6 +137,7 @@ def update_min_balance(email, password, min_balance):
 
 def lambda_handler(event, context):
     try:
+        logging.info("Received event: " + json.dumps(event))
         body = json.loads(event['body'])
         email = body['email']
         password = body['password']
@@ -152,6 +153,7 @@ def lambda_handler(event, context):
             })
         }
     except Exception as e:
+        logging.error(f"An error occurred in lambda_handler: {e}")
         return {
             'statusCode': 400,
             'body': json.dumps({
