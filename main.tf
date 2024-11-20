@@ -5,6 +5,7 @@ provider "aws" {
 resource "random_string" "suffix" {
   length  = 8
   special = false
+  upper   = false  # Ensure the suffix is lower case
 }
 
 resource "aws_s3_bucket" "lambda_bucket" {
