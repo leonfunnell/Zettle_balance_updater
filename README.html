@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Zettle Balance Updater</h1>
-    <p>This project contains a Lambda function that updates the minimum balance on Zettle, since this is not available via the public API. The function is triggered by an API call and accepts the balance, email address, and password as parameters.  It uses Selenium and Chromedriver which creates a "headless" Google Chrome browser session.  If there are errors in the flow, a log and screenshots will be generated.  All sessions will generate logs and screenshots, but a bucket aging policy will mean they will dissapear after a 7 days.</p>
+    <p>This project contains a Lambda function that updates the minimum balance on Zettle, since this is not available via the public API. The function is triggered by an API call and accepts the balance, email address, and password as parameters. It uses Selenium and Chromedriver which creates a "headless" Google Chrome browser session. If there are errors in the flow, a log and screenshots will be generated. All sessions will generate logs and screenshots, but a bucket aging policy will mean they will disappear after 7 days.</p>
 
     <h2>Setup</h2>
     <ol>
@@ -15,41 +15,44 @@
             <pre><code>git clone https://github.com/&lt;your-username&gt;/Zettle_balance_updater.git
 cd Zettle_balance_updater</code></pre>
         </li>
+        <li>Ensure you are using the correct version of Docker:
+            <pre><code>docker --version</code></pre>
+            <p>If your Docker version is outdated, update Docker to the latest version. Here are the steps for updating Docker on different operating systems:</p>
+            <h3>For Ubuntu:</h3>
+            <pre><code>
+# Uninstall old versions
+sudo apt-get remove docker docker-engine docker.io containerd runc
+
+# Set up the repository
+sudo apt-get update
+sudo apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker Engine
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+# Verify installation
+docker --version
+            </code></pre>
+        </li>
+        <li>Install Docker Buildx:
+            <pre><code>docker buildx install</code></pre>
+        </li>
         <li>Build the Docker image and create the deployment package:
             <pre><code>./zip_lambda.sh</code></pre>
         </li>
         <li>Deploy the infrastructure using Terraform:
-            <pre><code>terraform init
-terraform apply</code></pre>
-        </li>
-    </ol>
-
-    <h2>API</h2>
-    <h3>Request</h3>
-    <p><strong>POST</strong> <code>/update_balance</code></p>
-    <h4>Body</h4>
-    <pre><code>{
-  "email": "your-email@example.com",
-  "password": "your-password",
-  "min_balance": 300
-}</code></pre>
-
-    <h3>Response</h3>
-    <h4>Success</h4>
-    <pre><code>{
-  "existing_balance": "200",
-  "new_balance": "300"
-}</code></pre>
-
-    <h4>Error</h4>
-    <pre><code>{
-  "error": "An error occurred: ...",
-  "log_url": "https://your-s3-bucket-name.s3.amazonaws.com/logs/...",
-  "screenshot_url": "https://your-s3-bucket-name.s3.amazonaws.com/errors/..."
-}</code></pre>
-
-    <h2>Notes</h2>
-    <ul>
             <pre><code>terraform init
 terraform apply</code></pre>
         </li>
