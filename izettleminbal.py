@@ -1,4 +1,6 @@
 import os
+import json
+import boto3
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -10,19 +12,23 @@ import time
 import logging
 from datetime import datetime
 
-# Configuration
-EMAIL = "leon_funnell@hotmail.com"  # Replace with your email
-PASSWORD = os.getenv("IZPASSWORD")  # Fetch password from environment variable
-MIN_BALANCE = 300                # Replace with the desired minimum balance
-
-if not PASSWORD:
-    raise EnvironmentError("IZPASSWORD environment variable is not set.")
-
 # Setup logging
-log_filename = datetime.now().strftime("izettleminbal_%Y%m%d_%H%M%S.log")
+log_filename = datetime.now().strftime("/tmp/izettleminbal_%Y%m%d_%H%M%S.log")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename=log_filename)
 
-def update_min_balance():
+# AWS S3 client
+s3_client = boto3.client('s3')
+S3_BUCKET = os.getenv("S3_BUCKET")
+
+def upload_to_s3(file_path, bucket, object_name):
+    try:
+        s3_client.upload_file(file_path, bucket, object_name)
+        return f"https://{bucket}.s3.amazonaws.com/{object_name}"
+    except Exception as e:
+        logging.error(f"Failed to upload {file_path} to S3: {e}")
+        return None
+
+def update_min_balance(email, password, min_balance):
     # Setup Chrome options for headless mode
     chrome_options = Options()
     chrome_options.add_argument("--headless")
@@ -44,7 +50,7 @@ def update_min_balance():
         # Enter email
         logging.info("Entering email.")
         email_field = driver.find_element(By.ID, "email")
-        email_field.send_keys(EMAIL)
+        email_field.send_keys(email)
         
         # Click the "Next" button
         logging.info("Clicking 'Next' button.")
@@ -53,14 +59,14 @@ def update_min_balance():
         
         # Wait for the password field to be present
         logging.info("Waiting for the password field to be present.")
-        screenshot_filename = datetime.now().strftime("before_password_field_%Y%m%d_%H%M%S.png")
+        screenshot_filename = datetime.now().strftime("/tmp/before_password_field_%Y%m%d_%H%M%S.png")
         driver.save_screenshot(screenshot_filename)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "password")))
         
         # Enter password
         logging.info("Entering password.")
         password_field = driver.find_element(By.ID, "password")
-        password_field.send_keys(PASSWORD)
+        password_field.send_keys(password)
         
         # Click the "Log in" button
         logging.info("Clicking 'Log in' button.")
@@ -92,14 +98,14 @@ def update_min_balance():
         existing_value = min_balance_field.get_attribute("value")
         logging.info(f"Existing minimum balance value: {existing_value}")
         
-        if existing_value == str(MIN_BALANCE):
+        if existing_value == str(min_balance):
             logging.info("Minimum balance is already set to the desired value. No update needed.")
-            return
+            return existing_value, existing_value
         
         min_balance_field.clear()
         min_balance_field.send_keys(Keys.CONTROL + "a")
         min_balance_field.send_keys(Keys.DELETE)
-        min_balance_field.send_keys(str(MIN_BALANCE))
+        min_balance_field.send_keys(str(min_balance))
         
         # Submit the form or save changes (assuming there's a save button)
         logging.info("Saving changes.")
@@ -117,12 +123,40 @@ def update_min_balance():
         new_min_balance_value = new_min_balance_field.get_attribute("value")
         logging.info(f"New minimum balance value: {new_min_balance_value}")
         
+        return existing_value, new_min_balance_value
+        
     except Exception as e:
         logging.error(f"An error occurred: {e}")
-        error_screenshot_filename = datetime.now().strftime("error_screenshot_%Y%m%d_%H%M%S.png")
+        error_screenshot_filename = datetime.now().strftime("/tmp/error_screenshot_%Y%m%d_%H%M%S.png")
         driver.save_screenshot(error_screenshot_filename)
+        error_screenshot_url = upload_to_s3(error_screenshot_filename, S3_BUCKET, f"errors/{os.path.basename(error_screenshot_filename)}")
+        log_url = upload_to_s3(log_filename, S3_BUCKET, f"logs/{os.path.basename(log_filename)}")
+        raise Exception(f"An error occurred: {e}", {"log_url": log_url, "screenshot_url": error_screenshot_url})
     finally:
         driver.quit()
 
-if __name__ == "__main__":
-    update_min_balance()
+def lambda_handler(event, context):
+    try:
+        body = json.loads(event['body'])
+        email = body['email']
+        password = body['password']
+        min_balance = body['min_balance']
+        
+        existing_balance, new_balance = update_min_balance(email, password, min_balance)
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'existing_balance': existing_balance,
+                'new_balance': new_balance
+            })
+        }
+    except Exception as e:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({
+                'error': str(e),
+                'log_url': e.args[1].get('log_url'),
+                'screenshot_url': e.args[1].get('screenshot_url')
+            })
+        }
