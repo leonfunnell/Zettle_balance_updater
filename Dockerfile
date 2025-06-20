@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.8
+FROM public.ecr.aws/lambda/python:3.9 as stage
 
 # Install dependencies
 RUN yum -y install \
