@@ -15,10 +15,10 @@ import logging  # Import the logging module
 from datetime import datetime
 
 # === CONFIGURATION ===
-EMAIL = "leon_funnell@hotmail.com"
-PASSWORD = "MyOlivia123-"
-CODE_API_ENDPOINT = "https://hook.eu1.make.com/7eny3inp4pmpw2xtoxznxtc29tfmkbk8"  # Change this to your actual endpoint
-API_KEY = "5-PzY:Ft2FMZAM_"
+EMAIL = "email@address.com"
+PASSWORD = "<password>"
+CODE_API_ENDPOINT = "https://apiendpoint.com/endpoint"  # Change this to your actual endpoint
+API_KEY = "<APIKEY>"
 CHROME_DRIVER_PATH = "/usr/bin/chromedriver"  # Update this
 min_balance = 850  # Set your desired minimum balance here
 LOG_FILE_PATH = "/tmp/izminbaltest.log"  # Log file path
